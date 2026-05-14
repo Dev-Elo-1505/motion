@@ -1,13 +1,23 @@
-import { Text, View } from "react-native";
+import { COLORS } from "@/constants/theme";
+import { useAuth } from "@clerk/expo";
+import { Redirect } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
 
 
+const Index = () => {
+  const {isSignedIn, isLoaded} = useAuth()
+  if (!isLoaded) {
+    return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+    </View>)
+  }
 
-export default function Index() {
-  return (
-    <View
-      className="bg-green-500 p-5"
-    >
-      <Text className="text-red-500">Edit app/index.tsx to edit this screen.yyyy</Text>
-    </View>
-  );
-}
+  if (isSignedIn) {
+    return <Redirect href="/(tabs)" />
+  }
+
+  return <Redirect href="/(auth)/login" />
+};
+
+export default Index;

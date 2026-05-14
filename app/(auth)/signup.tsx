@@ -1,16 +1,17 @@
 import CustomButton from "@/components/CustomButton";
 import CustomInput from "@/components/CustomInput";
 import { styles } from "@/styles/auth.styles";
-import { useSignIn } from "@clerk/expo";
+import { useAuth, useSignUp } from "@clerk/expo";
 import { useSignInWithGoogle } from "@clerk/expo/google";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { useState } from "react";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
 
-const LoginScreen = () => {
-  const { errors, signIn, fetchStatus } = useSignIn();
+const SignupScreen = () => {
+  const { errors, signUp, fetchStatus } = useSignUp();
   const { startGoogleAuthenticationFlow } = useSignInWithGoogle();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
@@ -21,28 +22,27 @@ const LoginScreen = () => {
   if (Platform.OS !== "ios" && Platform.OS !== "android") return null;
 
   const handleGoogleAuth = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const { createdSessionId, setActive } =
-        await startGoogleAuthenticationFlow();
+      const { createdSessionId, setActive } = await startGoogleAuthenticationFlow()
 
       if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        router.replace("/(tabs)");
+        await setActive({session: createdSessionId})
+        router.replace('/(tabs)')
       }
     } catch (error: any) {
-      if (error?.code === "SIGN_IN_CANCELLED" || error?.code === "-5") {
-        return;
+       if (error?.code === 'SIGN_IN_CANCELLED' || error?.code === '-5') {
+        return
       }
 
-      console.error("Google sign-in error:", JSON.stringify(error, null, 2));
+      console.error('Google sign-in error:', JSON.stringify(error, null, 2))
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   };
 
-  const finishSignIn = async () => {
-    await signIn.finalize({
+  const finishSignUp = async () => {
+    await signUp.finalize({
       navigate: ({ session }) => {
         if (session?.currentTask) {
           console.log(session?.currentTask);
@@ -53,10 +53,10 @@ const LoginScreen = () => {
     });
   };
 
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     setLoading(true);
     try {
-      const { error } = await signIn.password({
+      const { error } = await signUp.password({
         emailAddress,
         password,
       });
@@ -65,21 +65,8 @@ const LoginScreen = () => {
         console.error(JSON.stringify(error, null, 2));
         return;
       }
-      if (signIn.status === "complete") {
-        await finishSignIn();
-      } else if (signIn.status === "needs_second_factor") {
-      } else if (signIn.status === "needs_client_trust") {
-        const emailCodeFactor = signIn.supportedSecondFactors.find(
-          (factor) => factor.strategy === "email_code",
-        );
 
-        if (emailCodeFactor) {
-          await signIn.mfa.sendEmailCode();
-        }
-      } else {
-        // Check why the sign-in is not complete
-        console.error("Sign-in attempt not complete:", signIn);
-      }
+      await signUp.verifications.sendEmailCode();
     } catch (err: any) {
       console.error(`Sign Up Error:: ${err.message}`);
     } finally {
@@ -90,21 +77,30 @@ const LoginScreen = () => {
   const handleVerify = async () => {
     setLoading(true);
     try {
-      await signIn.mfa.verifyEmailCode({ code });
+      await signUp.verifications.verifyEmailCode({ code });
 
-      if (signIn.status === "complete") {
-        await finishSignIn();
+      if (signUp.status === "complete") {
+        await finishSignUp();
       } else {
-        console.error("Sign-in attempt not complete:", signIn);
+        console.error("Sign-up attempt not complete:", signUp);
       }
     } catch (err: any) {
-      console.error("Verification attempt not complete:", signIn);
+      console.error("Verification attempt not complete:", signUp);
     } finally {
       setLoading(false);
     }
   };
 
-  if (signIn.status === "needs_client_trust") {
+  if (signUp.status === "complete" || isSignedIn) {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  const needsEmailVerification =
+    signUp.status === "missing_requirements" &&
+    signUp.unverifiedFields.includes("email_address") &&
+    signUp.missingFields.length === 0;
+
+  if (needsEmailVerification) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>Verify your account</Text>
@@ -144,7 +140,7 @@ const LoginScreen = () => {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.title}>Welcome Back!</Text>
+        <Text style={styles.title}>Create an Account</Text>
 
         <CustomInput
           label="Email"
@@ -157,8 +153,8 @@ const LoginScreen = () => {
           autoComplete="email"
           keyboardType="email-address"
         />
-        {errors.fields.identifier && (
-          <Text style={styles.error}>{errors.fields.identifier.message}</Text>
+        {errors.fields.emailAddress && (
+          <Text style={styles.error}>{errors.fields.emailAddress.message}</Text>
         )}
 
         <CustomInput
@@ -183,14 +179,14 @@ const LoginScreen = () => {
           <Text style={styles.error}>{errors.fields.password.message}</Text>
         )}
         <CustomButton
-          text={loading ? "Logging In..." : "Log In"}
-          onPress={handleSignIn}
+          text={loading ? "Creating account..." : "Sign Up"}
+          onPress={handleSignUp}
         />
 
         <View style={styles.loginSection}>
-          <Text style={styles.loginPrompt}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
-            <Text style={styles.loginLink}>Sign up</Text>
+          <Text style={styles.loginPrompt}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+            <Text style={styles.loginLink}>Login here</Text>
           </TouchableOpacity>
         </View>
 
@@ -235,4 +231,4 @@ const LoginScreen = () => {
   );
 };
 
-export default LoginScreen;
+export default SignupScreen;
