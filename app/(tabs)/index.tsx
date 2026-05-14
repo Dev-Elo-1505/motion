@@ -7,7 +7,7 @@ const HomeScreen = () => {
     const { user } = useUser()
 return (
     <View style={styles.container}>
-        <Text style={{color: "white"}}>Home screen</Text>
+        <Text style={{color: "black"}}>Home screen</Text>
         <Show when="signed-in">
         <Text style={{color: "white"}}>Hello {user?.emailAddresses[0].emailAddress}</Text>
         <Pressable style={styles.button} onPress={() => signOut()}>
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
     gap: 16,
-    backgroundColor: 'black',
+    backgroundColor: 'white',
   },
   title: {
     fontSize: 24,
